@@ -90,16 +90,15 @@ def encrypt_message(message, rotor_set, start_positions, ring_settings, plugboar
 #   Streamlit UI
 # -----------------------------
 
-st.title("🔐 Enigma Maschine – Simulation in Python")
+st.title("Enigma – Simulation in Python")
 
-st.write("Diese Version basiert direkt auf deinem Originalcode, angepasst für Streamlit.")
 
 # Rotorwahl
 st.header("1) Rotoren auswählen")
 available_rotors = ["Rotor I", "Rotor II", "Rotor III", "Rotor IV", "Rotor V"]
 
 rotor_selection = st.multiselect(
-    "Wähle genau 3 Rotoren:",
+    "Wähle genau 3 Rotoren: (Reihenfolge relevant)",
     options=list(range(1, 6)),
     format_func=lambda x: available_rotors[x-1],
     default=[1, 2, 3]
@@ -154,7 +153,7 @@ msg = st.text_area("Nachricht (A–Z)", "").upper()
 msg = ''.join([c for c in msg if c in alphabet])
 
 # Start encryption
-if st.button("🔐 Verschlüsseln"):
+if st.button("Nachricht Ver- oder Entschlüsseln"):
     if not msg:
         st.error("Bitte eine Nachricht eingeben!")
     else:
