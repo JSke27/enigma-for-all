@@ -1,4 +1,9 @@
-# Konfiguration
+import streamlit as st
+
+# -----------------------------
+#   Konfiguration
+# -----------------------------
+
 alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 rotors = [
@@ -11,10 +16,15 @@ rotors = [
 
 reflector = "YRUHQSLDPXNGOKMIEBFZCWVJAT"
 
-# Funktionen
+
+# -----------------------------
+#   Funktionen
+# -----------------------------
+
 def encode_through_rotor(letter, rotor, position, ring_setting, reverse=False):
     index = alphabet.index(letter)
     shifted_index = (index + position - ring_setting) % 26
+
     if reverse:
         step_letter = alphabet[shifted_index]
         mapped_index = rotor.index(step_letter)
@@ -22,17 +32,21 @@ def encode_through_rotor(letter, rotor, position, ring_setting, reverse=False):
     else:
         step_letter = rotor[shifted_index]
         output_index = (alphabet.index(step_letter) - position + ring_setting + 26) % 26
+
     return alphabet[output_index]
+
 
 def reflect(letter):
     index = alphabet.index(letter)
     return reflector[index]
+
 
 def plugboard_swap(letter, plugboard_pairs):
     for pair in plugboard_pairs:
         if letter in pair:
             return pair[1] if letter == pair[0] else pair[0]
     return letter
+
 
 def rotate_rotors(positions):
     positions[0] = (positions[0] + 1) % 26
@@ -41,76 +55,109 @@ def rotate_rotors(positions):
         if positions[1] == 0:
             positions[2] = (positions[2] + 1) % 26
 
+
 def encrypt_letter(letter, rotor_set, positions, ring_settings, plugboard_pairs):
     letter = plugboard_swap(letter, plugboard_pairs)
 
+    # Vorwärts durch die 3 Rotoren
     for i in range(3):
         letter = encode_through_rotor(letter, rotor_set[i], positions[i], ring_settings[i], reverse=False)
 
+    # Reflektor
     letter = reflect(letter)
 
+    # Rückwärts durch die Rotoren
     for i in reversed(range(3)):
         letter = encode_through_rotor(letter, rotor_set[i], positions[i], ring_settings[i], reverse=True)
 
     letter = plugboard_swap(letter, plugboard_pairs)
     return letter
 
+
 def encrypt_message(message, rotor_set, start_positions, ring_settings, plugboard_pairs):
     encrypted = ""
-    positions = start_positions[:]  # aktuelle Rotor-Positionen (veränderbar)
+    positions = start_positions[:]
 
     for char in message:
         if char in alphabet:
             encrypted += encrypt_letter(char, rotor_set, positions, ring_settings, plugboard_pairs)
             rotate_rotors(positions)
+
     return encrypted
 
-# Benutzereingaben
-while True:
-    rotor_input = input("Wähle drei Rotoren aus fünf (z.B. 1 3 4): ")
-    rotor_nums = [int(n) for n in rotor_input.strip().split()]
-    if len(rotor_nums) == 3 and all(1 <= n <= 5 for n in rotor_nums):
-        break
-    print("Ungültige Eingabe. Bitte drei Zahlen von 1 bis 5 eingeben.")
 
-rotor_set = [rotors[n - 1] for n in rotor_nums]
+# -----------------------------
+#   Streamlit UI
+# -----------------------------
 
-while True:
-    ring_input = input("Gib die drei Ringstellungen der Rotoren ein von 01 bis 26 (z.B. 16 04 23): ")
-    ring_settings = [int(r) - 1 for r in ring_input.strip().split()]
-    if len(ring_settings) == 3 and all(0 <= r <= 25 for r in ring_settings):
-        break
-    print("Ungültige Ringstellungen.")
+st.title("🔐 Enigma Maschine – Simulation in Python")
 
-while True:
-    start_input = input("Gib die drei Startpositionen (A-Z) der Rotoren ein (z.B. A B C): ").upper()
-    try:
-        start_positions = [alphabet.index(c) for c in start_input.strip().split()]
-        if len(start_positions) == 3:
-            break
-    except:
-        pass
-    print("Ungültige Startpositionen.")
+st.write("Diese Version basiert direkt auf deinem Originalcode, angepasst für Streamlit.")
 
-plug_input = input("Gib bis 13 Steckerbrett-Paare (z. B. AB CD EF), oder leer lassen. Jeden Buchstaben max. einmnal verwenden. :").upper().strip()
+# Rotorwahl
+st.header("1) Rotoren auswählen")
+available_rotors = ["Rotor I", "Rotor II", "Rotor III", "Rotor IV", "Rotor V"]
+
+rotor_selection = st.multiselect(
+    "Wähle genau 3 Rotoren:",
+    options=list(range(1, 6)),
+    format_func=lambda x: available_rotors[x-1],
+    default=[1, 2, 3]
+)
+
+if len(rotor_selection) != 3:
+    st.warning("Bitte genau 3 Rotoren auswählen!")
+    st.stop()
+
+rotor_set = [rotors[n - 1] for n in rotor_selection]
+
+# Ringstellungen
+st.header("2) Ringstellungen (01–26)")
+ring_settings = []
+cols = st.columns(3)
+for i in range(3):
+    r = cols[i].number_input(f"Ring {i+1}", 1, 26, 1)
+    ring_settings.append(r - 1)
+
+# Startpositionen
+st.header("3) Startpositionen (A–Z)")
+start_positions = []
+cols = st.columns(3)
+for i in range(3):
+    pos = cols[i].text_input(f"Start {i+1}", "A")
+    if len(pos) != 1 or pos.upper() not in alphabet:
+        st.error("Ungültige Startposition!")
+        st.stop()
+    start_positions.append(alphabet.index(pos.upper()))
+
+# Plugboard
+st.header("4) Steckerbrett")
+plug_input = st.text_input("Paare (Beispiel: AB CD EF)")
+
 plugboard_pairs = []
 used_letters = set()
 
-if plug_input:
-    pairs = plug_input.split()
-    for pair in pairs:
+if plug_input.strip():
+    for pair in plug_input.upper().split():
         if len(pair) == 2 and pair[0] in alphabet and pair[1] in alphabet:
             if pair[0] in used_letters or pair[1] in used_letters:
-                print(f"Buchstabe {pair} doppelt verwendet! Ignoriere.")
+                st.warning(f"Buchstaben bereits verbunden: {pair}")
                 continue
             plugboard_pairs.append(pair)
             used_letters.update(pair)
         else:
-            print(f"Ungültiges Paar: {pair}")
+            st.warning(f"Ungültiges Paar: {pair}")
 
-nachricht = input("Gib deine Nachricht ein (nur A-Z, ohne Umlaute): ").upper()
-nachricht = ''.join([c for c in nachricht if c in alphabet])
+# Nachricht
+st.header("5) Nachricht")
+msg = st.text_area("Nachricht (A–Z)", "").upper()
+msg = ''.join([c for c in msg if c in alphabet])
 
-verschlüsselt = encrypt_message(nachricht, rotor_set, start_positions, ring_settings, plugboard_pairs)
-print("Verschlüsselte Nachricht:", verschlüsselt)
-
+# Start encryption
+if st.button("🔐 Verschlüsseln"):
+    if not msg:
+        st.error("Bitte eine Nachricht eingeben!")
+    else:
+        verschlüsselt = encrypt_message(msg, rotor_set, start_positions, ring_settings, plugboard_pairs)
+        st.success("Verschlüsselte Nachricht:")
+        st.code(verschlüsselt)
