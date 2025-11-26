@@ -152,6 +152,8 @@ st.header("5) Nachricht")
 msg = st.text_area("Nachricht (A–Z)", "").upper()
 msg = ''.join([c for c in msg if c in alphabet])
 
+st.text("Für Verschlüsselung: Code mit den gewünschten Einstellungen auf Botschaft anwenden.")
+st.text("Für Entschlüsselung: Code mit den exakten, für die Verschlüsselung verwendeten Einstellungen auf die verschlüsselte Botschaft anwenden.")
 # Start encryption
 if st.button("Nachricht Ver- oder Entschlüsseln"):
     if not msg:
